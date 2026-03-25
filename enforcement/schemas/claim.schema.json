@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/enforcement/schemas/claim.schema.json",
+  "title": "Claim",
+  "description": "An enforcement primitive asserting an actor's presence and requesting coordination in a named zone.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier for this claim."
+    },
+    "zone": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target zone path. Same addressing model as the advisory layer."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["hard", "soft"],
+      "description": "hard: blocks conflicting operations. soft: warns but does not block."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["active", "released", "expired", "overridden", "negotiated"],
+      "description": "Current lifecycle state."
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the claiming actor."
+    },
+    "actor_kind": {
+      "$ref": "actor-identity.schema.json#/$defs/actor_kind",
+      "description": "Category of the claiming actor."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable claim rationale."
+    },
+    "created_at_unix": {
+      "type": "integer",
+      "description": "Claim creation timestamp (Unix seconds)."
+    },
+    "expires_at_unix": {
+      "type": "integer",
+      "description": "Expiry timestamp. Mandatory for remote-origin claims."
+    },
+    "updated_at_unix": {
+      "type": "integer",
+      "description": "Last modification timestamp."
+    },
+    "requested_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Specific paths within the zone (advisory precision hint)."
+    },
+    "negotiation_note": {
+      "type": "string",
+      "description": "Message to conflicting actors during contention."
+    },
+    "override_actor_id": {
+      "type": "string",
+      "description": "Actor who overrode this claim (populated when state is 'overridden')."
+    },
+    "override_reason": {
+      "type": "string",
+      "description": "Reason for override (populated when state is 'overridden')."
+    },
+    "override_at_unix": {
+      "type": "integer",
+      "description": "When the override occurred."
+    }
+  },
+  "required": ["id", "zone", "mode", "state", "actor_id", "created_at_unix"],
+  "if": {
+    "properties": {
+      "state": { "const": "overridden" }
+    }
+  },
+  "then": {
+    "required": ["override_actor_id", "override_at_unix"]
+  }
+}

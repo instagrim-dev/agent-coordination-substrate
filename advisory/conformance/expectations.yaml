@@ -1,0 +1,677 @@
+# Advisory Layer Conformance Expectations
+# Version: 0.1.0
+# Each scenario defines a sequence of operations and expected outcomes.
+# A conforming implementation MUST pass all scenarios at its declared level.
+
+groups:
+  # ─────────────────────────────────────────────
+  # Level 1: Signal Store
+  # ─────────────────────────────────────────────
+
+  deposit:
+    description: Signal deposit validation and storage
+    scenarios:
+      - id: deposit_valid_signal
+        description: A valid signal envelope is accepted and stored
+        steps:
+          - action: deposit
+            input:
+              id: "sig-001"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+              strength_milli: 800
+              reason: "Auth module has no rate limiting"
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "backend/auth"
+            expect:
+              deposit_count: 1
+              contributing_signals:
+                - id: "sig-001"
+                  actor_id: "agent-alpha"
+
+      - id: deposit_rejects_missing_zone
+        description: Deposit without zone is rejected
+        steps:
+          - action: deposit
+            input:
+              id: "sig-002"
+              zone: ""
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: rejected
+              reason: empty_zone
+
+      - id: deposit_rejects_missing_actor
+        description: Deposit without actor_id is rejected
+        steps:
+          - action: deposit
+            input:
+              id: "sig-003"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: ""
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: rejected
+              reason: empty_actor_id
+
+      - id: deposit_rejects_invalid_ttl
+        description: Deposit with expires_at <= created_at is rejected
+        steps:
+          - action: deposit
+            input:
+              id: "sig-004"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716003600
+              expires_at_unix: 1716000000
+            expect:
+              result: rejected
+              reason: invalid_ttl
+
+      - id: deposit_rejects_equal_timestamps
+        description: Deposit with expires_at == created_at is rejected
+        steps:
+          - action: deposit
+            input:
+              id: "sig-005"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716000000
+            expect:
+              result: rejected
+              reason: invalid_ttl
+
+  mortality:
+    description: Signal TTL enforcement and garbage collection
+    scenarios:
+      - id: signal_expires_after_ttl
+        description: Signal is absent from readout after TTL passes
+        steps:
+          - action: deposit
+            input:
+              id: "sig-010"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716000060
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              to_unix: 1716000030
+
+          - action: readout
+            input:
+              zone: "backend/auth"
+            expect:
+              deposit_count: 1
+
+          - action: advance_time
+            input:
+              to_unix: 1716000061
+
+          - action: readout
+            input:
+              zone: "backend/auth"
+            expect:
+              deposit_count: 0
+
+      - id: signal_reinforce_extends_ttl
+        description: Reinforcing a signal extends its expiry
+        steps:
+          - action: deposit
+            input:
+              id: "sig-011"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716000060
+            expect:
+              result: accepted
+
+          - action: reinforce
+            input:
+              signal_id: "sig-011"
+              actor_id: "agent-alpha"
+              new_expires_at_unix: 1716000120
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              to_unix: 1716000090
+
+          - action: readout
+            input:
+              zone: "backend/auth"
+            expect:
+              deposit_count: 1
+
+      - id: signal_kill_removes_immediately
+        description: Killing a signal removes it before TTL
+        steps:
+          - action: deposit
+            input:
+              id: "sig-012"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: kill
+            input:
+              signal_id: "sig-012"
+              actor_id: "agent-alpha"
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "backend/auth"
+            expect:
+              deposit_count: 0
+
+      - id: reinforce_rejects_different_actor
+        description: An actor cannot reinforce another actor's signal
+        steps:
+          - action: deposit
+            input:
+              id: "sig-013"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716000060
+            expect:
+              result: accepted
+
+          - action: reinforce
+            input:
+              signal_id: "sig-013"
+              actor_id: "agent-beta"
+              new_expires_at_unix: 1716000120
+            expect:
+              result: rejected
+              reason: actor_mismatch
+
+  zone_addressing:
+    description: Zone hierarchy and glob matching
+    scenarios:
+      - id: exact_match
+        description: Exact zone name matches only that zone
+        steps:
+          - action: deposit
+            input:
+              id: "sig-020"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-021"
+              zone: "backend/api"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: list_zones
+            input:
+              glob: "backend/auth"
+            expect:
+              zone_count: 1
+              zones:
+                - zone: "backend/auth"
+                  deposit_count: 1
+
+      - id: wildcard_match
+        description: Single wildcard matches one path segment
+        steps:
+          - action: deposit
+            input:
+              id: "sig-022"
+              zone: "backend/auth"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-023"
+              zone: "backend/api"
+              kind: "quality_concern"
+              actor_id: "agent-beta"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-024"
+              zone: "backend/auth/tokens"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: list_zones
+            input:
+              glob: "backend/*"
+            expect:
+              zone_count: 2
+              zones:
+                - zone: "backend/auth"
+                - zone: "backend/api"
+
+      - id: recursive_wildcard_match
+        description: Double wildcard matches zero or more segments
+        steps:
+          - action: list_zones
+            input:
+              glob: "backend/**"
+            expect:
+              zone_count: 3
+              zones:
+                - zone: "backend/auth"
+                - zone: "backend/api"
+                - zone: "backend/auth/tokens"
+
+  pressure_readout:
+    description: Pressure state classification
+    scenarios:
+      - id: quiet_when_empty
+        description: Zone with no signals has quiet pressure
+        steps:
+          - action: readout
+            input:
+              zone: "empty/zone"
+            expect:
+              pressure_state: "quiet"
+              deposit_count: 0
+
+      - id: active_with_single_signal
+        description: Zone with one signal from one actor is active
+        steps:
+          - action: deposit
+            input:
+              id: "sig-030"
+              zone: "test/pressure"
+              kind: "observation"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "test/pressure"
+            expect:
+              pressure_state: "active"
+              independent_lineages: 1
+
+      - id: convergent_with_multiple_actors
+        description: Zone with signals from multiple independent actors is convergent
+        steps:
+          - action: deposit
+            input:
+              id: "sig-031"
+              zone: "test/convergence"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-032"
+              zone: "test/convergence"
+              kind: "quality_concern"
+              actor_id: "agent-beta"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-033"
+              zone: "test/convergence"
+              kind: "quality_concern"
+              actor_id: "agent-gamma"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "test/convergence"
+            expect:
+              pressure_state_one_of: ["convergent", "warming", "saturated"]
+              independent_lineages: 3
+
+      - id: readout_preserves_actor_identity
+        description: Readout includes actor_id for all contributing signals
+        steps:
+          - action: deposit
+            input:
+              id: "sig-034"
+              zone: "test/identity"
+              kind: "observation"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "test/identity"
+            expect:
+              contributing_signals:
+                - id: "sig-034"
+                  actor_id: "agent-alpha"
+                  kind: "observation"
+
+      - id: readout_does_not_mutate
+        description: Reading does not change deposit count or state
+        steps:
+          - action: deposit
+            input:
+              id: "sig-035"
+              zone: "test/immutable"
+              kind: "observation"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: readout
+            input:
+              zone: "test/immutable"
+            expect:
+              deposit_count: 1
+
+          - action: readout
+            input:
+              zone: "test/immutable"
+            expect:
+              deposit_count: 1
+
+  persistence:
+    description: Crash safety and restart behavior
+    scenarios:
+      - id: signals_survive_restart
+        description: Signals persisted before crash are readable after restart
+        steps:
+          - action: deposit
+            input:
+              id: "sig-040"
+              zone: "test/persistence"
+              kind: "observation"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: restart
+            input: {}
+
+          - action: readout
+            input:
+              zone: "test/persistence"
+            expect:
+              deposit_count: 1
+              contributing_signals:
+                - id: "sig-040"
+
+      - id: expired_signals_cleaned_on_restart
+        description: Signals past TTL are absent after restart
+        steps:
+          - action: deposit
+            input:
+              id: "sig-041"
+              zone: "test/persistence"
+              kind: "observation"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716000060
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              to_unix: 1716000120
+
+          - action: restart
+            input: {}
+
+          - action: readout
+            input:
+              zone: "test/persistence"
+            expect:
+              deposit_count: 0
+
+  # ─────────────────────────────────────────────
+  # Level 4: Induction-Capable
+  # ─────────────────────────────────────────────
+
+  induction:
+    description: Saturation-triggered manifest proposal generation
+    scenarios:
+      - id: single_actor_cannot_trigger_induction
+        description: Signals from one actor never trigger induction regardless of count
+        steps:
+          - action: configure_saturation
+            input:
+              zone_glob: "test/induction"
+              threshold_deposits: 3
+              threshold_lineages: 2
+              window_seconds: 3600
+
+          - action: deposit
+            input:
+              id: "sig-050"
+              zone: "test/induction"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-051"
+              zone: "test/induction"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000010
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-052"
+              zone: "test/induction"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000020
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: list_proposals
+            input:
+              zone: "test/induction"
+            expect:
+              count: 0
+
+      - id: multi_actor_convergence_triggers_induction
+        description: When threshold deposits from threshold lineages accumulate, a proposal is generated
+        steps:
+          - action: configure_saturation
+            input:
+              zone_glob: "test/induction2"
+              threshold_deposits: 3
+              threshold_lineages: 2
+              window_seconds: 3600
+
+          - action: deposit
+            input:
+              id: "sig-053"
+              zone: "test/induction2"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-054"
+              zone: "test/induction2"
+              kind: "quality_concern"
+              actor_id: "agent-beta"
+              created_at_unix: 1716000010
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-055"
+              zone: "test/induction2"
+              kind: "quality_concern"
+              actor_id: "agent-gamma"
+              created_at_unix: 1716000020
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: list_proposals
+            input:
+              zone: "test/induction2"
+            expect:
+              count: 1
+              proposals:
+                - state: "pending"
+                  zone: "test/induction2"
+                  actor_count_gte: 2
+
+      - id: proposal_is_mortal
+        description: Generated proposals have expiry and are cleaned after TTL
+        steps:
+          - action: list_proposals
+            input:
+              zone: "test/induction2"
+            expect:
+              count: 1
+              proposals:
+                - has_expires_at_unix: true
+
+      - id: proposal_requires_explicit_acceptance
+        description: Proposals do not auto-promote — explicit accept is required
+        steps:
+          - action: list_proposals
+            input:
+              zone: "test/induction2"
+            expect:
+              proposals:
+                - state: "pending"
+
+          - action: accept_proposal
+            input:
+              manifest_id: "${proposals[0].manifest_id}"
+              actor_id: "operator-1"
+            expect:
+              result: accepted
+              new_state: "accepted"
+
+      - id: proposal_dismissal
+        description: Proposals can be explicitly dismissed
+        steps:
+          - action: configure_saturation
+            input:
+              zone_glob: "test/dismiss"
+              threshold_deposits: 2
+              threshold_lineages: 2
+              window_seconds: 3600
+
+          - action: deposit
+            input:
+              id: "sig-060"
+              zone: "test/dismiss"
+              kind: "quality_concern"
+              actor_id: "agent-alpha"
+              created_at_unix: 1716000000
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: deposit
+            input:
+              id: "sig-061"
+              zone: "test/dismiss"
+              kind: "quality_concern"
+              actor_id: "agent-beta"
+              created_at_unix: 1716000010
+              expires_at_unix: 1716003600
+            expect:
+              result: accepted
+
+          - action: list_proposals
+            input:
+              zone: "test/dismiss"
+            expect:
+              count: 1
+
+          - action: dismiss_proposal
+            input:
+              manifest_id: "${proposals[0].manifest_id}"
+              actor_id: "operator-1"
+              reason: "False positive — unrelated signals"
+            expect:
+              result: accepted
+              new_state: "dismissed"

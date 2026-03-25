@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/saturation-spec.schema.json",
+  "title": "Saturation Specification",
+  "description": "Defines the threshold conditions for induction — when accumulated advisory signals should generate a manifest proposal.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this saturation rule."
+    },
+    "zone_glob": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target zone(s) for this saturation rule. Supports glob patterns."
+    },
+    "threshold_deposits": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Minimum active deposit count to trigger induction."
+    },
+    "threshold_lineages": {
+      "type": "integer",
+      "minimum": 2,
+      "description": "Minimum independent actor count. Must be >= 2 (induction requires multi-actor convergence)."
+    },
+    "window_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Time window within which deposits must accumulate."
+    },
+    "kind_filter": {
+      "type": "string",
+      "description": "Optional: only count signals of this kind toward saturation."
+    },
+    "strength_minimum_milli": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Optional: only count signals with strength at or above this threshold."
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this saturation rule is currently active."
+    }
+  },
+  "required": ["zone_glob", "threshold_deposits", "threshold_lineages", "window_seconds"]
+}

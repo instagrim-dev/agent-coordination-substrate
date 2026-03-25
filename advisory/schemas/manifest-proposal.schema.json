@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/manifest-proposal.schema.json",
+  "title": "Manifest Proposal",
+  "description": "Generated when saturation criteria are met. Represents an induced artifact awaiting explicit acceptance or dismissal.",
+  "type": "object",
+  "properties": {
+    "manifest_id": {
+      "type": "string",
+      "description": "Unique identifier for this proposal."
+    },
+    "zone": {
+      "type": "string",
+      "description": "The zone where saturation was detected."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["pending", "accepted", "canary", "active", "retired", "dismissed"],
+      "description": "Current lifecycle state."
+    },
+    "signal_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The signals that triggered saturation."
+    },
+    "saturation_spec_id": {
+      "type": "string",
+      "description": "The saturation rule that generated this proposal."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Derived from signal strength and lineage diversity."
+    },
+    "actor_count": {
+      "type": "integer",
+      "minimum": 2,
+      "description": "Number of independent actors whose signals contributed."
+    },
+    "proposed_at_unix": {
+      "type": "integer",
+      "description": "When the manifest was generated."
+    },
+    "expires_at_unix": {
+      "type": "integer",
+      "description": "When the proposal expires if not acted upon."
+    },
+    "accepted_at_unix": {
+      "type": "integer",
+      "description": "When the proposal was accepted (if applicable)."
+    },
+    "accepted_by": {
+      "type": "string",
+      "description": "Actor who accepted the proposal (if applicable)."
+    },
+    "dismissed_at_unix": {
+      "type": "integer",
+      "description": "When the proposal was dismissed (if applicable)."
+    },
+    "dismissed_by": {
+      "type": "string",
+      "description": "Actor who dismissed the proposal (if applicable)."
+    },
+    "dismiss_reason": {
+      "type": "string",
+      "description": "Reason for dismissal (if applicable)."
+    },
+    "retired_at_unix": {
+      "type": "integer",
+      "description": "When the proposal was retired (if applicable)."
+    }
+  },
+  "required": ["manifest_id", "zone", "state", "signal_ids", "confidence", "proposed_at_unix", "expires_at_unix"]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "claim-003-overridden",
+  "zone": "backend/db",
+  "mode": "hard",
+  "state": "overridden",
+  "actor_id": "agent-migration-session-4d2e",
+  "actor_kind": "agent",
+  "reason": "Running database migration",
+  "created_at_unix": 1716000000,
+  "expires_at_unix": 1716007200,
+  "updated_at_unix": 1716002000,
+  "override_actor_id": "operator-jmh",
+  "override_reason": "Migration agent appears stuck. Releasing claim to allow manual recovery.",
+  "override_at_unix": 1716002000
+}

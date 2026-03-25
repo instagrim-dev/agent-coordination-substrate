@@ -1,0 +1,11 @@
+{
+  "manifest_id": "mfst-001-backend-auth",
+  "zone": "backend/auth",
+  "state": "pending",
+  "signal_ids": ["sig-example-001", "sig-example-002", "sig-example-003"],
+  "saturation_spec_id": "sat-quality-convergence",
+  "confidence": 0.85,
+  "actor_count": 3,
+  "proposed_at_unix": 1716000025,
+  "expires_at_unix": 1716086400
+}

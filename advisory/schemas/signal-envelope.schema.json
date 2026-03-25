@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/signal-envelope.schema.json",
+  "title": "Signal Envelope",
+  "description": "The fundamental deposit unit in the advisory coordination substrate.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier for this signal."
+    },
+    "zone": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target zone path. Hierarchical, forward-slash separated."
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Signal type classifier. Implementation-defined vocabulary."
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the depositing actor."
+    },
+    "actor_kind": {
+      "type": "string",
+      "enum": ["agent", "operator", "remote_agent", "mcp_client", "http_client", "system"],
+      "description": "Category of the depositing actor."
+    },
+    "created_at_unix": {
+      "type": "integer",
+      "description": "Deposit timestamp in Unix seconds."
+    },
+    "expires_at_unix": {
+      "type": "integer",
+      "description": "Mandatory expiry timestamp in Unix seconds. Must be greater than created_at_unix."
+    },
+    "strength_milli": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000,
+      "default": 1000,
+      "description": "Signal strength in milli-units (0-1000). Default: 1000 (full strength)."
+    },
+    "properties": {
+      "type": "object",
+      "description": "Structured metadata. Implementation-defined schema.",
+      "additionalProperties": true
+    },
+    "source": {
+      "type": "string",
+      "description": "Origin surface identifier (e.g., 'agent_tool', 'http', 'mcp', 'cli')."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable deposit rationale."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Originating session identifier."
+    },
+    "workflow_id": {
+      "type": "string",
+      "description": "Originating workflow identifier."
+    }
+  },
+  "required": ["id", "zone", "kind", "actor_id", "created_at_unix", "expires_at_unix"],
+  "additionalProperties": false
+}

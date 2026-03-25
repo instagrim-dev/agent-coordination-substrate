@@ -1,0 +1,18 @@
+{
+  "id": "claim-001-backend-auth",
+  "zone": "backend/auth",
+  "mode": "hard",
+  "state": "active",
+  "actor_id": "agent-coder-session-7a3f",
+  "actor_kind": "agent",
+  "reason": "Refactoring authentication module - adding rate limiting",
+  "created_at_unix": 1716000000,
+  "expires_at_unix": 1716003600,
+  "updated_at_unix": 1716000000,
+  "requested_paths": [
+    "internal/auth/handler.go",
+    "internal/auth/ratelimit.go",
+    "internal/auth/handler_test.go"
+  ],
+  "negotiation_note": "Working on auth rate limiting. Should take ~1 hour. Ping if urgent."
+}
