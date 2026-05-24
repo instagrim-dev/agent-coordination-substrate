@@ -75,9 +75,10 @@ The [conformance runner](reference/conformance-runner/) validates any `SignalSto
 2. **[advisory/SPEC.md](advisory/SPEC.md)** — Advisory layer normative specification
 3. **[enforcement/SPEC.md](enforcement/SPEC.md)** — Enforcement layer normative specification
 4. **[induction/SPEC.md](induction/SPEC.md)** — Induction layer normative specification (depends on advisory)
-5. **[docs/theory.md](docs/theory.md)** — Intellectual lineage (stigmergy, distributed leases, resilience patterns)
-6. **[docs/adoption-guide.md](docs/adoption-guide.md)** — How to implement in your agent framework
-7. **[reference/](reference/)** — Go reference implementation and conformance runner
+5. **[transport/HTTP.md](transport/HTTP.md)** — HTTP transport binding (maps all layers to wire protocol)
+6. **[docs/theory.md](docs/theory.md)** — Intellectual lineage (stigmergy, distributed leases, resilience patterns)
+7. **[docs/adoption-guide.md](docs/adoption-guide.md)** — How to implement in your agent framework
+8. **[reference/](reference/)** — Go reference implementation and conformance runner
 
 ---
 
@@ -99,6 +100,8 @@ The [conformance runner](reference/conformance-runner/) validates any `SignalSto
 │   ├── schemas/                   # JSON Schema (Draft 2020-12)
 │   ├── conformance/               # Test expectations (YAML)
 │   └── examples/                  # Example payloads
+├── transport/
+│   └── HTTP.md                    # HTTP transport binding (wire protocol)
 ├── docs/
 │   ├── adoption-guide.md          # Implementation walkthrough
 │   ├── design-principles.md       # Six mandatory properties
