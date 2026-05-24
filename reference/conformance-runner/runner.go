@@ -599,8 +599,26 @@ func (r *Runner) checkExpect(expect map[string]any, got map[string]any) bool {
 			if !found {
 				return false
 			}
-		case "contributing_signals", "zones", "claims", "claim", "proposals":
-			// Deep object matching — skip for now, trust structural pass
+		case "contributing_signals":
+			if !matchSignalsList(expected, got["contributing_signals"]) {
+				return false
+			}
+		case "zones":
+			if !matchZonesList(expected, got["zones"]) {
+				return false
+			}
+		case "claims":
+			if !matchClaimsList(expected, got["claims"]) {
+				return false
+			}
+		case "claim":
+			if !matchClaimObject(expected, got["claim"]) {
+				return false
+			}
+		case "proposals":
+			// Induction not implemented in reference memstore; proposals
+			// validation is deferred until list_proposals/accept_proposal
+			// actions are supported by a store implementation.
 		}
 	}
 	return true
@@ -635,4 +653,160 @@ func resolveRef(raw, lastClaimID string) string {
 		return lastClaimID
 	}
 	return raw
+}
+
+// matchSignalsList checks that every expected signal entry exists (order-independent)
+// in the actual signals list using field-subset matching.
+func matchSignalsList(expected, got any) bool {
+	expectedList, ok := toSliceOfMaps(expected)
+	if !ok {
+		return true // can't parse expected — pass through
+	}
+	gotList, ok := toSliceOfMaps(got)
+	if !ok {
+		return false
+	}
+	for _, exp := range expectedList {
+		if !findMatchInList(exp, gotList) {
+			return false
+		}
+	}
+	return true
+}
+
+// matchZonesList checks that every expected zone entry exists (order-independent)
+// in the actual zones list using field-subset matching.
+func matchZonesList(expected, got any) bool {
+	expectedList, ok := toSliceOfMaps(expected)
+	if !ok {
+		return true
+	}
+	gotList, ok := toSliceOfMaps(got)
+	if !ok {
+		return false
+	}
+	for _, exp := range expectedList {
+		if !findMatchInList(exp, gotList) {
+			return false
+		}
+	}
+	return true
+}
+
+// matchClaimsList checks that every expected claim entry exists (order-independent)
+// in the actual claims list using field-subset matching.
+func matchClaimsList(expected, got any) bool {
+	expectedList, ok := toSliceOfMaps(expected)
+	if !ok {
+		return true
+	}
+	gotList, ok := toSliceOfMaps(got)
+	if !ok {
+		return false
+	}
+	for _, exp := range expectedList {
+		if !findMatchInList(exp, gotList) {
+			return false
+		}
+	}
+	return true
+}
+
+// matchClaimObject checks that every field in expected matches the
+// corresponding field in the actual claim map.
+func matchClaimObject(expected, got any) bool {
+	expMap, ok := toMap(expected)
+	if !ok {
+		return true
+	}
+	gotMap, ok := toMap(got)
+	if !ok {
+		return false
+	}
+	return fieldSubsetMatch(expMap, gotMap)
+}
+
+// findMatchInList returns true if any entry in gotList matches all specified
+// fields in exp (field-subset match).
+func findMatchInList(exp map[string]any, gotList []map[string]any) bool {
+	for _, g := range gotList {
+		if fieldSubsetMatch(exp, g) {
+			return true
+		}
+	}
+	return false
+}
+
+// fieldSubsetMatch returns true when every key in exp has an equal value in
+// got. Comparison uses fmt.Sprint for type-insensitive string equality, with
+// special handling for numeric and boolean fields.
+func fieldSubsetMatch(exp, got map[string]any) bool {
+	for k, ev := range exp {
+		gv, exists := got[k]
+		if !exists {
+			return false
+		}
+		if !valuesEqual(ev, gv) {
+			return false
+		}
+	}
+	return true
+}
+
+func valuesEqual(expected, got any) bool {
+	// Handle boolean comparisons explicitly (YAML bools vs Go bools).
+	if eb, ok := expected.(bool); ok {
+		if gb, ok2 := got.(bool); ok2 {
+			return eb == gb
+		}
+		return false
+	}
+	// Handle numeric comparisons.
+	if isNumeric(expected) && isNumeric(got) {
+		return toInt64(expected) == toInt64(got)
+	}
+	return fmt.Sprint(expected) == fmt.Sprint(got)
+}
+
+func isNumeric(v any) bool {
+	switch v.(type) {
+	case int, int64, float64:
+		return true
+	}
+	return false
+}
+
+// toSliceOfMaps coerces an any value into []map[string]any.
+// Handles both []any (from YAML) and []map[string]any (from Go code).
+func toSliceOfMaps(v any) ([]map[string]any, bool) {
+	switch s := v.(type) {
+	case []map[string]any:
+		return s, true
+	case []any:
+		var result []map[string]any
+		for _, item := range s {
+			m, ok := toMap(item)
+			if !ok {
+				return nil, false
+			}
+			result = append(result, m)
+		}
+		return result, true
+	}
+	return nil, false
+}
+
+// toMap coerces an any value into map[string]any.
+func toMap(v any) (map[string]any, bool) {
+	switch m := v.(type) {
+	case map[string]any:
+		return m, true
+	case map[any]any:
+		result := make(map[string]any, len(m))
+		for k, val := range m {
+			result[fmt.Sprint(k)] = val
+		}
+		return result, true
+	}
+	return nil, false
 }

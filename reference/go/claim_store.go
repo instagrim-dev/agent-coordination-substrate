@@ -45,6 +45,10 @@ func (s *MemClaimStore) AcquireWithOpts(zone, mode, actorID, reason string, ttlS
 	if opts.Origin == "remote" && ttlSeconds <= 0 {
 		return Claim{}, &ValidationError{Field: "ttl_seconds", Reason: "remote_requires_ttl"}
 	}
+	// Design choice: local claims (Origin != "remote") permit zero TTL, creating
+	// non-expiring claims. The spec says SHOULD include expires_at_unix for local
+	// (not MUST). Callers that want bounded local claims should pass a TTL.
+	// Remote claims always require TTL > 0 (enforced above).
 
 	now := s.clock.Now()
 
@@ -153,13 +157,12 @@ func (s *MemClaimStore) Override(claimID, operatorID, reason string) error {
 }
 
 // ListClaims returns active claims, optionally filtered by zone glob and/or actor.
+// Holds a single write lock for gc + iteration to avoid TOCTOU between unlock/re-lock.
 func (s *MemClaimStore) ListClaims(zoneGlob, actorID string) []Claim {
 	s.mu.Lock()
-	s.gcLocked(s.clock.Now().Unix())
-	s.mu.Unlock()
+	defer s.mu.Unlock()
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.gcLocked(s.clock.Now().Unix())
 
 	var result []Claim
 	for _, c := range s.claims {

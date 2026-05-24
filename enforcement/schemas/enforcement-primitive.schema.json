@@ -37,7 +37,7 @@
     },
     "expires_at_unix": {
       "type": "integer",
-      "description": "Mandatory expiry timestamp. All enforcement primitives MUST be mortal."
+      "description": "Expiry timestamp. Remote-origin primitives MUST include this field. Local primitives SHOULD include it but MAY rely on process-shutdown cleanup."
     },
     "overridable": {
       "type": "boolean",
@@ -57,5 +57,5 @@
       "description": "When the override occurred."
     }
   },
-  "required": ["id", "primitive_type", "zone", "actor_id", "state", "created_at_unix", "expires_at_unix", "overridable"]
+  "required": ["id", "primitive_type", "zone", "actor_id", "state", "created_at_unix", "overridable"]
 }

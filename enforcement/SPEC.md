@@ -84,7 +84,6 @@ A conforming implementation MUST support both modes. The default when mode is am
 active → released
 active → expired
 active → overridden
-active → negotiated → active (with modified scope)
 ```
 
 | State | Meaning |
@@ -93,7 +92,8 @@ active → negotiated → active (with modified scope)
 | `released` | Explicitly released by the owning actor |
 | `expired` | TTL elapsed, automatically removed |
 | `overridden` | Dismissed by an authorized operator |
-| `negotiated` | Modified through contention resolution |
+
+> **Note:** A `negotiated` transitional state is described in Appendix C for future consideration; conforming implementations are not required to support it.
 
 ---
 
@@ -154,6 +154,10 @@ Request a claim on a zone.
 - For hard claims: MUST reject if an active hard claim exists in the same zone from a different actor
 - Implementations MAY enforce per-actor claim limits
 
+### 5.1.1 Capacity Protection
+
+Implementations MAY reject acquisitions when internal capacity limits are reached. When rejecting for capacity, the implementation MUST return error reason `capacity_exceeded`. Implementations SHOULD document their capacity limits.
+
 ### 5.2 Release
 
 Explicitly release a claim before TTL expiry.
@@ -193,6 +197,10 @@ Force-release any claim regardless of ownership.
 - Override SHOULD require elevated privilege (but MUST NOT be impossible)
 - After override, the zone is immediately available for new claims
 
+### Atomic Override-and-Reserve (OPTIONAL)
+
+The non-atomic override sequence (override → zone available → new acquire) has a race window where a third party may acquire the zone before the operator's intended actor. Implementations MAY provide an atomic `override_and_reserve` operation that simultaneously overrides the existing claim and acquires a new claim for a specified actor, eliminating this window. When provided, this operation MUST record the same audit trail as a separate override followed by acquire.
+
 ---
 
 ## 6. Conflict Resolution
@@ -224,7 +232,8 @@ When an actor acquires a soft claim in a zone where other soft claims exist:
 - A hard claim does NOT block new soft claims
 - A soft claim does NOT block new hard claims
 - When both exist, the **strictest enforcement wins** for operation gating:
-  - If a hard claim is active, operations are blocked for non-owners
+  - If a hard claim is active, operations are blocked for actors that are not the owner of the hard claim
+  - A soft claim does not confer ownership status for enforcement gating purposes; "non-owner" means specifically "not the owner of the active hard claim"
   - Soft claims in the same zone provide additional context but don't escalate blocking
 
 ### 6.4 Zone Overlap
@@ -374,7 +383,6 @@ The implementation provides contention visibility and negotiation.
 **Additional requirements beyond Level 1:**
 - Soft claim contention reporting (§6.2)
 - Contention report readout (§8.3)
-- Negotiation state transitions (§3.4)
 - Mixed-mode resolution (§6.3)
 
 ### Level 3: Remote-Capable
@@ -458,3 +466,19 @@ This spec's claims draw from the distributed lease tradition (Gray & Cheriton 19
 | Visibility | Holder-only | All participants |
 
 See [docs/theory.md](../docs/theory.md) for the full intellectual lineage.
+
+---
+
+## Appendix C: Negotiated State (Informative — Future Consideration)
+
+A `negotiated` transitional state allows a claim to be modified through contention resolution rather than requiring release and re-acquisition. The lifecycle would extend as:
+
+```
+active → negotiated → active (with modified scope)
+```
+
+| State | Meaning |
+|-------|---------|
+| `negotiated` | Claim is being modified through contention resolution between conflicting actors |
+
+This state is not required for conformance. Implementations exploring contention resolution protocols MAY implement this state experimentally, prefixed as `x_negotiated` until a future normative revision incorporates it.

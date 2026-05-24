@@ -88,6 +88,7 @@ func TestSignalMortality(t *testing.T) {
 		ActorID:       "agent-alpha",
 		CreatedAtUnix: 1716000000,
 		ExpiresAtUnix: 1716000060,
+		StrengthMilli: 1000,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -117,6 +118,7 @@ func TestSignalReinforce(t *testing.T) {
 		ActorID:       "agent-alpha",
 		CreatedAtUnix: 1716000000,
 		ExpiresAtUnix: 1716000060,
+		StrengthMilli: 1000,
 	})
 
 	err := store.Reinforce("sig-011", "agent-alpha", 1716000120)
@@ -141,6 +143,7 @@ func TestSignalReinforceRejectsDifferentActor(t *testing.T) {
 		ActorID:       "agent-alpha",
 		CreatedAtUnix: 1716000000,
 		ExpiresAtUnix: 1716003600,
+		StrengthMilli: 1000,
 	})
 
 	err := store.Reinforce("sig-012", "agent-beta", 1716007200)

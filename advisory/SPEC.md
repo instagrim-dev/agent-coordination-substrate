@@ -80,6 +80,10 @@ A conforming implementation SHOULD reject deposits that:
 
 - Have `strength_milli` outside the range 0–1000
 
+### 2.6 Capacity Protection
+
+Implementations MAY reject deposits when internal capacity limits are reached. When rejecting for capacity, the implementation MUST return error reason `capacity_exceeded`. Implementations SHOULD document their capacity limits.
+
 ---
 
 ## 3. Zone Addressing
@@ -172,6 +176,19 @@ The pressure state vocabulary:
 | `boundary_sensitive` | Near a governance boundary, elevated attention warranted |
 
 Implementations MUST preserve the meaning of these states when emitting them. Implementations MAY add additional states prefixed with `x_` (extension states).
+
+### Minimum Classification Thresholds
+
+Implementations MUST classify zone pressure using at least these boundaries:
+
+| Condition | Minimum State |
+|-----------|--------------|
+| Zero live signals in zone | `quiet` |
+| 1 independent lineage (actor) | `active` |
+| 2 independent lineages | `warming` |
+| 3+ independent lineages | `convergent` |
+
+Implementations MAY use finer-grained classifications or additional states beyond this minimum. The `score` field is implementation-defined but MUST be monotonically non-decreasing with deposit count and lineage count.
 
 ### 5.3 Trend States
 

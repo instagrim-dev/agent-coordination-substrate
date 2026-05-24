@@ -38,6 +38,9 @@ func (s *MemSignalStore) Deposit(sig Signal) (Signal, error) {
 	if sig.Kind == "" {
 		return Signal{}, &ValidationError{Field: "kind", Reason: "empty_kind"}
 	}
+	if sig.StrengthMilli < 0 {
+		return Signal{}, &ValidationError{Field: "strength_milli", Reason: "must_be_positive"}
+	}
 	if sig.StrengthMilli == 0 {
 		sig.StrengthMilli = 1000
 	}
@@ -46,14 +49,17 @@ func (s *MemSignalStore) Deposit(sig Signal) (Signal, error) {
 	}
 
 	s.mu.Lock()
+	s.gcLocked(s.clock.Now().Unix())
 	s.signals[sig.ID] = sig
 	s.mu.Unlock()
 	return sig, nil
 }
 
 // Readout returns the zone pressure for the given zone.
+// Does not mutate the store; expired signals are filtered at read time.
 func (s *MemSignalStore) Readout(zone string) ZonePressure {
-	s.gc()
+	now := s.clock.Now().Unix()
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -63,6 +69,9 @@ func (s *MemSignalStore) Readout(zone string) ZonePressure {
 
 	for _, sig := range s.signals {
 		if sig.Zone == zone {
+			if sig.ExpiresAtUnix > 0 && sig.ExpiresAtUnix <= now {
+				continue // expired, skip without mutating
+			}
 			signals = append(signals, sig)
 			actors[sig.ActorID] = struct{}{}
 			if sig.SessionID != "" {
@@ -73,7 +82,7 @@ func (s *MemSignalStore) Readout(zone string) ZonePressure {
 
 	lineages := len(actors)
 	pressure := classifyPressure(signals, lineages)
-	trend := classifyTrend(signals, s.clock.Now().Unix())
+	trend := classifyTrend(signals, now)
 
 	return ZonePressure{
 		Zone:                zone,
@@ -87,12 +96,16 @@ func (s *MemSignalStore) Readout(zone string) ZonePressure {
 }
 
 // ListZones returns zone pressure readouts for all zones matching the glob.
+// Does not mutate the store; expired signals are filtered by Readout.
 func (s *MemSignalStore) ListZones(glob string) []ZonePressure {
-	s.gc()
-	s.mu.RLock()
+	now := s.clock.Now().Unix()
 
+	s.mu.RLock()
 	zones := make(map[string]struct{})
 	for _, sig := range s.signals {
+		if sig.ExpiresAtUnix > 0 && sig.ExpiresAtUnix <= now {
+			continue
+		}
 		if glob == "" || ZoneMatch(glob, sig.Zone) {
 			zones[sig.Zone] = struct{}{}
 		}
@@ -139,16 +152,21 @@ func (s *MemSignalStore) Kill(signalID, actorID string) error {
 	return nil
 }
 
-// gc removes expired signals.
-func (s *MemSignalStore) gc() {
-	now := s.clock.Now().Unix()
+// GC removes expired signals from the store. Callers may invoke this
+// periodically to reclaim memory; Deposit also triggers gc on each write.
+func (s *MemSignalStore) GC() {
 	s.mu.Lock()
+	s.gcLocked(s.clock.Now().Unix())
+	s.mu.Unlock()
+}
+
+// gcLocked removes expired signals. Must be called with s.mu write-held.
+func (s *MemSignalStore) gcLocked(nowUnix int64) {
 	for id, sig := range s.signals {
-		if sig.ExpiresAtUnix > 0 && sig.ExpiresAtUnix <= now {
+		if sig.ExpiresAtUnix > 0 && sig.ExpiresAtUnix <= nowUnix {
 			delete(s.signals, id)
 		}
 	}
-	s.mu.Unlock()
 }
 
 func classifyPressure(signals []Signal, lineages int) Pressure {

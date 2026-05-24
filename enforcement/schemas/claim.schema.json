@@ -2,12 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/enforcement/schemas/claim.schema.json",
   "title": "Claim",
-  "description": "An enforcement primitive asserting an actor's presence and requesting coordination in a named zone.",
+  "description": "An enforcement primitive asserting an actor's presence and requesting coordination in a named zone. Claims satisfy the enforcement-primitive interface (enforcement-primitive.schema.json).",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
       "description": "Globally unique identifier for this claim."
+    },
+    "primitive_type": {
+      "type": "string",
+      "const": "claim",
+      "default": "claim",
+      "description": "Enforcement primitive type. Always 'claim' for this schema."
     },
     "zone": {
       "type": "string",
@@ -21,7 +27,7 @@
     },
     "state": {
       "type": "string",
-      "enum": ["active", "released", "expired", "overridden", "negotiated"],
+      "enum": ["active", "released", "expired", "overridden"],
       "description": "Current lifecycle state."
     },
     "actor_id": {
@@ -43,7 +49,7 @@
     },
     "expires_at_unix": {
       "type": "integer",
-      "description": "Expiry timestamp. Mandatory for remote-origin claims."
+      "description": "Expiry timestamp. Mandatory for remote-origin claims; RECOMMENDED for local claims."
     },
     "updated_at_unix": {
       "type": "integer",
@@ -57,6 +63,12 @@
     "negotiation_note": {
       "type": "string",
       "description": "Message to conflicting actors during contention."
+    },
+    "overridable": {
+      "type": "boolean",
+      "const": true,
+      "default": true,
+      "description": "All claims are overridable. Always true per the enforcement-primitive contract."
     },
     "override_actor_id": {
       "type": "string",
