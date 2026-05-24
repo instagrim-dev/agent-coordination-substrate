@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/manifest-proposal.schema.json",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/induction/schemas/manifest-proposal.schema.json",
   "title": "Manifest Proposal",
   "description": "Generated when saturation criteria are met. Represents an induced artifact awaiting explicit acceptance or dismissal.",
   "type": "object",

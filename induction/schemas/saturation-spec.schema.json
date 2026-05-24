@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/saturation-spec.schema.json",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/induction/schemas/saturation-spec.schema.json",
   "title": "Saturation Specification",
   "description": "Defines the threshold conditions for induction — when accumulated advisory signals should generate a manifest proposal.",
   "type": "object",

@@ -2,7 +2,7 @@
 
 A specification for environment-mediated coordination between autonomous agents.
 
-Two layers, one substrate: **advisory signals** shape attention without blocking; **enforcement claims** gate operations with mandatory mortality. Together they provide the governance layer that multi-agent workspaces need — without centralized orchestration, without permanent locks, and without coupling agents to each other.
+Three layers, one substrate: **advisory signals** shape attention without blocking; **enforcement claims** gate operations with mandatory mortality; **induction** generates artifacts when independent signals converge past a threshold. Together they provide the governance layer that multi-agent workspaces need — without centralized orchestration, without permanent locks, and without coupling agents to each other.
 
 ---
 
@@ -20,16 +20,17 @@ This pattern draws from [stigmergy](docs/theory.md) — indirect coordination th
 
 ---
 
-## Two Layers
+## Three Layers
 
 | Layer | Contract | Primitives |
 |-------|----------|------------|
-| **Advisory** | Shapes attention. Never blocks. | Signals, zones, pressure readouts, induction |
+| **Advisory** | Shapes attention. Never blocks. | Signals, zones, pressure readouts |
 | **Enforcement** | Gates operations. Always mortal. | Claims, quarantine zones, evidence gates, capacity reservations |
+| **Induction** | Generates artifacts from convergence. Requires advisory. | Saturation specs, manifest proposals, compound synthesis |
 
-Both layers share: actor identity, zone addressing, mortality semantics, multi-surface readout.
+All layers share: actor identity, zone addressing, mortality semantics, multi-surface readout.
 
-They differ: advisory primitives never block tool execution. Enforcement primitives may block — but always expire, and operators can always override.
+They differ: advisory primitives never block. Enforcement primitives may block — but always expire, and operators can always override. Induction observes advisory state and produces proposals — but never blocks and never auto-promotes.
 
 ---
 
@@ -39,8 +40,8 @@ They differ: advisory primitives never block tool execution. Enforcement primiti
 |------------|-----------|----------|-----|-----|
 | Advisory coordination (signals, zones) | ✓ | ✓ | ✗ | ✗ |
 | Enforcement (claims, gates) | ✓ | ✗ | ✗ | ✗ |
+| Induction (threshold → manifest) | ✓ (separate layer) | ✗ | ✗ | ✗ |
 | Persistence (crash-safe) | ✓ | ✗ (in-memory) | N/A | N/A |
-| Induction (threshold → manifest) | ✓ | ✗ | ✗ | ✗ |
 | Governance lifecycle (override, audit) | ✓ | ✗ | ✗ | ✗ |
 | Operator cognition readout | ✓ | ✗ | ✗ | ✗ |
 
@@ -73,9 +74,10 @@ The [conformance runner](reference/conformance-runner/) validates any `SignalSto
 1. **[docs/design-principles.md](docs/design-principles.md)** — The six properties every primitive must satisfy
 2. **[advisory/SPEC.md](advisory/SPEC.md)** — Advisory layer normative specification
 3. **[enforcement/SPEC.md](enforcement/SPEC.md)** — Enforcement layer normative specification
-4. **[docs/theory.md](docs/theory.md)** — Intellectual lineage (stigmergy, distributed leases, resilience patterns)
-5. **[docs/adoption-guide.md](docs/adoption-guide.md)** — How to implement in your agent framework
-6. **[reference/](reference/)** — Go reference implementation and conformance runner
+4. **[induction/SPEC.md](induction/SPEC.md)** — Induction layer normative specification (depends on advisory)
+5. **[docs/theory.md](docs/theory.md)** — Intellectual lineage (stigmergy, distributed leases, resilience patterns)
+6. **[docs/adoption-guide.md](docs/adoption-guide.md)** — How to implement in your agent framework
+7. **[reference/](reference/)** — Go reference implementation and conformance runner
 
 ---
 
@@ -89,6 +91,11 @@ The [conformance runner](reference/conformance-runner/) validates any `SignalSto
 │   └── examples/                  # Example payloads
 ├── enforcement/
 │   ├── SPEC.md                    # Normative specification
+│   ├── schemas/                   # JSON Schema (Draft 2020-12)
+│   ├── conformance/               # Test expectations (YAML)
+│   └── examples/                  # Example payloads
+├── induction/
+│   ├── SPEC.md                    # Normative specification (depends on advisory)
 │   ├── schemas/                   # JSON Schema (Draft 2020-12)
 │   ├── conformance/               # Test expectations (YAML)
 │   └── examples/                  # Example payloads
