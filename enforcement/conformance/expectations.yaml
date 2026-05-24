@@ -1,0 +1,677 @@
+# Enforcement Layer Conformance Expectations
+# Version: 0.1.0
+# Each scenario defines a sequence of operations and expected outcomes.
+# A conforming implementation MUST pass all scenarios at its declared level.
+
+groups:
+  # ─────────────────────────────────────────────
+  # Level 1: Basic Claims
+  # ─────────────────────────────────────────────
+
+  acquire:
+    description: Claim acquisition validation
+    scenarios:
+      - id: acquire_hard_claim
+        description: A valid hard claim is acquired and visible
+        steps:
+          - action: acquire
+            input:
+              zone: "backend/auth"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              reason: "Refactoring auth module"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+              claim:
+                state: "active"
+                mode: "hard"
+                actor_id: "agent-alpha"
+                has_id: true
+                has_expires_at_unix: true
+
+          - action: list_claims
+            input:
+              zone: "backend/auth"
+            expect:
+              count: 1
+              claims:
+                - actor_id: "agent-alpha"
+                  mode: "hard"
+                  state: "active"
+
+      - id: acquire_soft_claim
+        description: A valid soft claim is acquired and visible
+        steps:
+          - action: acquire
+            input:
+              zone: "frontend/nav"
+              mode: "soft"
+              actor_id: "agent-beta"
+              reason: "Reviewing navigation component"
+              ttl_seconds: 1800
+            expect:
+              result: accepted
+              claim:
+                state: "active"
+                mode: "soft"
+
+      - id: acquire_rejects_empty_zone
+        description: Claim without zone is rejected
+        steps:
+          - action: acquire
+            input:
+              zone: ""
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: rejected
+              reason: empty_zone
+
+      - id: acquire_rejects_empty_actor
+        description: Claim without actor_id is rejected
+        steps:
+          - action: acquire
+            input:
+              zone: "backend/auth"
+              mode: "hard"
+              actor_id: ""
+              ttl_seconds: 3600
+            expect:
+              result: rejected
+              reason: empty_actor_id
+
+      - id: acquire_rejects_invalid_mode
+        description: Claim with invalid mode is rejected
+        steps:
+          - action: acquire
+            input:
+              zone: "backend/auth"
+              mode: "exclusive"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: rejected
+              reason: invalid_mode
+
+  release:
+    description: Claim release behavior
+    scenarios:
+      - id: owner_can_release
+        description: The owning actor can release their claim
+        steps:
+          - action: acquire
+            input:
+              zone: "test/release"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: release
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-alpha"
+            expect:
+              result: accepted
+
+          - action: list_claims
+            input:
+              zone: "test/release"
+            expect:
+              count: 0
+
+      - id: non_owner_cannot_release
+        description: A different actor cannot release someone else's claim
+        steps:
+          - action: acquire
+            input:
+              zone: "test/release2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: release
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-beta"
+            expect:
+              result: rejected
+              reason: actor_mismatch
+
+      - id: release_is_idempotent
+        description: Releasing an already-released claim succeeds
+        steps:
+          - action: acquire
+            input:
+              zone: "test/release3"
+              mode: "soft"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: release
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-alpha"
+            expect:
+              result: accepted
+
+          - action: release
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-alpha"
+            expect:
+              result: accepted
+
+  ttl_expiry:
+    description: TTL enforcement and automatic expiry
+    scenarios:
+      - id: claim_expires_after_ttl
+        description: Hard claim auto-expires and zone becomes available
+        steps:
+          - action: acquire
+            input:
+              zone: "test/expiry"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 60
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              seconds: 30
+
+          - action: list_claims
+            input:
+              zone: "test/expiry"
+            expect:
+              count: 1
+
+          - action: advance_time
+            input:
+              seconds: 31
+
+          - action: list_claims
+            input:
+              zone: "test/expiry"
+            expect:
+              count: 0
+
+      - id: expired_claim_unblocks_zone
+        description: After expiry, another actor can acquire a hard claim
+        steps:
+          - action: acquire
+            input:
+              zone: "test/expiry2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 60
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              seconds: 61
+
+          - action: acquire
+            input:
+              zone: "test/expiry2"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+      - id: renew_extends_ttl
+        description: Renewing a claim extends its lifetime
+        steps:
+          - action: acquire
+            input:
+              zone: "test/renew"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 60
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              seconds: 50
+
+          - action: renew
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-alpha"
+              new_ttl_seconds: 60
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              seconds: 30
+
+          - action: list_claims
+            input:
+              zone: "test/renew"
+            expect:
+              count: 1
+
+      - id: renew_rejects_different_actor
+        description: An actor cannot renew another actor's claim
+        steps:
+          - action: acquire
+            input:
+              zone: "test/renew2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: renew
+            input:
+              claim_id: "${last_claim_id}"
+              actor_id: "agent-beta"
+              new_ttl_seconds: 7200
+            expect:
+              result: rejected
+              reason: actor_mismatch
+
+  hard_conflict:
+    description: Hard claim conflict detection
+    scenarios:
+      - id: hard_blocks_hard_same_zone
+        description: Second hard claim in same zone from different actor is rejected
+        steps:
+          - action: acquire
+            input:
+              zone: "test/conflict"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/conflict"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: conflict
+              conflicting_actor_id: "agent-alpha"
+
+      - id: same_actor_same_zone_allowed
+        description: Same actor can re-acquire their own zone (idempotent or renewal)
+        steps:
+          - action: acquire
+            input:
+              zone: "test/conflict2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/conflict2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result_one_of: [accepted, conflict]
+
+      - id: different_zones_no_conflict
+        description: Hard claims on different zones never conflict
+        steps:
+          - action: acquire
+            input:
+              zone: "backend/auth"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "backend/api"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+      - id: conflict_includes_metadata
+        description: Conflict response includes the blocking claim's metadata
+        steps:
+          - action: acquire
+            input:
+              zone: "test/metadata"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              reason: "Major refactoring in progress"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/metadata"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: conflict
+              conflicting_actor_id: "agent-alpha"
+              has_conflicting_reason: true
+              has_conflicting_expires_at_unix: true
+
+  soft_contention:
+    description: Soft claim coexistence
+    scenarios:
+      - id: multiple_soft_claims_coexist
+        description: Multiple soft claims in the same zone are all accepted
+        steps:
+          - action: acquire
+            input:
+              zone: "test/soft"
+              mode: "soft"
+              actor_id: "agent-alpha"
+              reason: "Reading auth docs"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/soft"
+              mode: "soft"
+              actor_id: "agent-beta"
+              reason: "Reviewing auth patterns"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/soft"
+              mode: "soft"
+              actor_id: "agent-gamma"
+              reason: "Testing auth endpoints"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: list_claims
+            input:
+              zone: "test/soft"
+            expect:
+              count: 3
+
+      - id: soft_does_not_block_hard
+        description: Existing soft claim does not block a new hard claim
+        steps:
+          - action: acquire
+            input:
+              zone: "test/soft2"
+              mode: "soft"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/soft2"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+  override:
+    description: Operator override (dismiss) capability
+    scenarios:
+      - id: operator_overrides_hard_claim
+        description: An operator can override any hard claim regardless of ownership
+        steps:
+          - action: acquire
+            input:
+              zone: "test/override"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: override
+            input:
+              claim_id: "${last_claim_id}"
+              operator_id: "operator-1"
+              reason: "Emergency: need to deploy hotfix"
+            expect:
+              result: accepted
+
+          - action: list_claims
+            input:
+              zone: "test/override"
+            expect:
+              count: 0
+
+      - id: override_unblocks_zone
+        description: After override, another actor can acquire the zone
+        steps:
+          - action: acquire
+            input:
+              zone: "test/override2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: override
+            input:
+              claim_id: "${last_claim_id}"
+              operator_id: "operator-1"
+              reason: "Clearing stale claim"
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/override2"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+      - id: override_is_auditable
+        description: Override records who, when, and why
+        steps:
+          - action: acquire
+            input:
+              zone: "test/override3"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: override
+            input:
+              claim_id: "${last_claim_id}"
+              operator_id: "operator-1"
+              reason: "Testing override audit"
+            expect:
+              result: accepted
+              override_recorded: true
+              override_actor_id: "operator-1"
+              has_override_reason: true
+              has_override_at_unix: true
+
+  persistence:
+    description: Crash safety and restart
+    scenarios:
+      - id: claims_survive_restart
+        description: Active claims with TTL persist across restart
+        steps:
+          - action: acquire
+            input:
+              zone: "test/persist"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: restart
+            input: {}
+
+          - action: list_claims
+            input:
+              zone: "test/persist"
+            expect:
+              count: 1
+              claims:
+                - actor_id: "agent-alpha"
+                  mode: "hard"
+                  state: "active"
+
+      - id: expired_claims_cleaned_on_restart
+        description: Claims past TTL are absent after restart
+        steps:
+          - action: acquire
+            input:
+              zone: "test/persist2"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 60
+            expect:
+              result: accepted
+
+          - action: advance_time
+            input:
+              seconds: 120
+
+          - action: restart
+            input: {}
+
+          - action: list_claims
+            input:
+              zone: "test/persist2"
+            expect:
+              count: 0
+
+  # ─────────────────────────────────────────────
+  # Level 2: Contention-Aware
+  # ─────────────────────────────────────────────
+
+  mixed_mode:
+    description: Hard + soft claim interaction
+    scenarios:
+      - id: hard_does_not_block_soft
+        description: Existing hard claim allows new soft claims
+        steps:
+          - action: acquire
+            input:
+              zone: "test/mixed"
+              mode: "hard"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/mixed"
+              mode: "soft"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: list_claims
+            input:
+              zone: "test/mixed"
+            expect:
+              count: 2
+
+      - id: strictest_wins_for_gating
+        description: When hard + soft coexist, hard enforcement applies for non-owners
+        steps:
+          - action: acquire
+            input:
+              zone: "test/mixed2"
+              mode: "soft"
+              actor_id: "agent-alpha"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/mixed2"
+              mode: "hard"
+              actor_id: "agent-beta"
+              ttl_seconds: 3600
+            expect:
+              result: accepted
+
+          - action: acquire
+            input:
+              zone: "test/mixed2"
+              mode: "hard"
+              actor_id: "agent-gamma"
+              ttl_seconds: 3600
+            expect:
+              result: conflict
+              conflicting_actor_id: "agent-beta"
+
+  # ─────────────────────────────────────────────
+  # Level 3: Remote-Capable
+  # ─────────────────────────────────────────────
+
+  remote_ttl_validation:
+    description: Remote-origin claims require TTL
+    scenarios:
+      - id: remote_claim_requires_ttl
+        description: Remote-origin claim without TTL is rejected
+        steps:
+          - action: acquire
+            input:
+              zone: "test/remote"
+              mode: "hard"
+              actor_id: "remote-agent-1"
+              actor_kind: "remote_agent"
+              origin: "remote"
+            expect:
+              result: rejected
+              reason: remote_requires_ttl
+
+      - id: remote_claim_with_ttl_accepted
+        description: Remote-origin claim with TTL is accepted
+        steps:
+          - action: acquire
+            input:
+              zone: "test/remote2"
+              mode: "hard"
+              actor_id: "remote-agent-1"
+              actor_kind: "remote_agent"
+              origin: "remote"
+              ttl_seconds: 300
+            expect:
+              result: accepted
+              claim:
+                has_expires_at_unix: true

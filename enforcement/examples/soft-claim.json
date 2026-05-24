@@ -1,0 +1,12 @@
+{
+  "id": "claim-002-backend-auth-review",
+  "zone": "backend/auth",
+  "mode": "soft",
+  "state": "active",
+  "actor_id": "agent-reviewer-session-9b1c",
+  "actor_kind": "agent",
+  "reason": "Security review of auth module - read-only inspection",
+  "created_at_unix": 1716001000,
+  "expires_at_unix": 1716004600,
+  "updated_at_unix": 1716001000
+}

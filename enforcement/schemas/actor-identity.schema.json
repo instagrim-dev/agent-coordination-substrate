@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/enforcement/schemas/actor-identity.schema.json",
+  "title": "Actor Identity",
+  "description": "Shared actor identity model used by both advisory and enforcement layers.",
+  "type": "object",
+  "properties": {
+    "actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the actor within a coordination scope. Must be stable for the duration of the actor's participation."
+    },
+    "actor_kind": {
+      "$ref": "#/$defs/actor_kind",
+      "description": "Category of the actor."
+    }
+  },
+  "required": ["actor_id"],
+  "$defs": {
+    "actor_kind": {
+      "type": "string",
+      "enum": ["agent", "operator", "remote_agent", "mcp_client", "http_client", "system"],
+      "description": "Classification of actor origin. 'agent': in-process AI agent. 'operator': human operator. 'remote_agent': agent from another process via HTTP/MCP. 'mcp_client': MCP protocol client. 'http_client': generic HTTP caller. 'system': substrate-internal process."
+    }
+  }
+}

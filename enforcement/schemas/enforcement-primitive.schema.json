@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/enforcement/schemas/enforcement-primitive.schema.json",
+  "title": "Enforcement Primitive Interface",
+  "description": "The shared contract that all enforcement primitives (claims, quarantine zones, evidence gates, etc.) MUST satisfy. Use this schema to validate that a new enforcement primitive type includes all mandatory properties.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique identifier for this enforcement primitive."
+    },
+    "primitive_type": {
+      "type": "string",
+      "enum": ["claim", "quarantine_zone", "evidence_gate", "capacity_reservation", "rate_boundary"],
+      "description": "The specific enforcement primitive type."
+    },
+    "zone": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Target zone path. All enforcement is zone-scoped."
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identity of the actor that created this enforcement primitive."
+    },
+    "actor_kind": {
+      "$ref": "actor-identity.schema.json#/$defs/actor_kind"
+    },
+    "state": {
+      "type": "string",
+      "description": "Current lifecycle state (primitive-specific vocabulary)."
+    },
+    "created_at_unix": {
+      "type": "integer",
+      "description": "Creation timestamp (Unix seconds)."
+    },
+    "expires_at_unix": {
+      "type": "integer",
+      "description": "Mandatory expiry timestamp. All enforcement primitives MUST be mortal."
+    },
+    "overridable": {
+      "type": "boolean",
+      "const": true,
+      "description": "All enforcement primitives MUST be overridable. This field is always true."
+    },
+    "override_actor_id": {
+      "type": "string",
+      "description": "Actor who overrode this primitive (populated after override)."
+    },
+    "override_reason": {
+      "type": "string",
+      "description": "Reason for override."
+    },
+    "override_at_unix": {
+      "type": "integer",
+      "description": "When the override occurred."
+    }
+  },
+  "required": ["id", "primitive_type", "zone", "actor_id", "state", "created_at_unix", "expires_at_unix", "overridable"]
+}

@@ -1,0 +1,61 @@
+{
+  "zone": "backend/auth",
+  "spec_zone_glob": "backend/**",
+  "deposit_count": 3,
+  "session_count": 2,
+  "independent_lineages": 3,
+  "pressure": {
+    "state": "convergent",
+    "score": 0.72,
+    "positive_count": 0,
+    "negative_count": 3,
+    "avoid_count": 0,
+    "conflict_count": 0,
+    "independent_lineages": 3
+  },
+  "trend": {
+    "state": "surging",
+    "current_deposit_count": 3,
+    "recent_deposit_count": 1,
+    "short_window_seconds": 3600,
+    "medium_window_seconds": 86400,
+    "newest_signal_created_at_unix": 1716000020,
+    "oldest_signal_created_at_unix": 1716000000
+  },
+  "contributing_signals": [
+    {
+      "id": "sig-example-001",
+      "zone": "backend/auth",
+      "kind": "quality_concern",
+      "actor_id": "agent-coder-session-7a3f",
+      "created_at_unix": 1716000000,
+      "expires_at_unix": 1716003600,
+      "strength_milli": 800,
+      "source": "agent_tool",
+      "reason": "No rate limiting on login endpoint"
+    },
+    {
+      "id": "sig-example-002",
+      "zone": "backend/auth",
+      "kind": "quality_concern",
+      "actor_id": "agent-reviewer-session-9b1c",
+      "created_at_unix": 1716000010,
+      "expires_at_unix": 1716003600,
+      "strength_milli": 900,
+      "source": "agent_tool",
+      "reason": "Missing input validation on password field"
+    },
+    {
+      "id": "sig-example-003",
+      "zone": "backend/auth",
+      "kind": "quality_concern",
+      "actor_id": "agent-security-scan-4d2e",
+      "created_at_unix": 1716000020,
+      "expires_at_unix": 1716003600,
+      "strength_milli": 950,
+      "source": "http",
+      "reason": "Automated scan detected weak session handling"
+    }
+  ],
+  "evidence_truncated": false
+}

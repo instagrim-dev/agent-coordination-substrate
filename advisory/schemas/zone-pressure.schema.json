@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/instagrim-dev/agent-coordination-substrate/advisory/schemas/zone-pressure.schema.json",
+  "title": "Zone Pressure Readout",
+  "description": "The primary read surface for the advisory coordination substrate. Returns the current coordination state of a zone.",
+  "type": "object",
+  "properties": {
+    "zone": {
+      "type": "string",
+      "description": "The zone this readout describes."
+    },
+    "spec_zone_glob": {
+      "type": "string",
+      "description": "The glob pattern that matched this zone."
+    },
+    "deposit_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Active (non-expired) signal count in this zone."
+    },
+    "session_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct sessions that deposited into this zone."
+    },
+    "independent_lineages": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct actors that deposited independently."
+    },
+    "pressure": {
+      "$ref": "#/$defs/pressure",
+      "description": "Current pressure state."
+    },
+    "trend": {
+      "$ref": "#/$defs/trend",
+      "description": "Temporal trend."
+    },
+    "contributing_signals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/signal_summary" },
+      "description": "Bounded list of active signals contributing to this readout."
+    },
+    "evidence_truncated": {
+      "type": "boolean",
+      "description": "Whether the contributing signals list was capped."
+    }
+  },
+  "required": ["zone", "pressure", "trend"],
+  "$defs": {
+    "pressure": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "quiet",
+            "active",
+            "warming",
+            "convergent",
+            "saturated",
+            "contested",
+            "avoidable",
+            "boundary_sensitive"
+          ],
+          "description": "Classified pressure state."
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Numeric pressure score (0.0-1.0). Implementation-defined formula."
+        },
+        "positive_count": {
+          "type": "integer",
+          "description": "Signals with positive/affirmative classification."
+        },
+        "negative_count": {
+          "type": "integer",
+          "description": "Signals with negative/warning classification."
+        },
+        "avoid_count": {
+          "type": "integer",
+          "description": "Signals with avoidance classification."
+        },
+        "conflict_count": {
+          "type": "integer",
+          "description": "Conflicting signal pairs detected."
+        },
+        "independent_lineages": {
+          "type": "integer",
+          "description": "Distinct actor lineages contributing to pressure."
+        }
+      },
+      "required": ["state"]
+    },
+    "trend": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["current", "recent", "cooling", "surging", "stale"],
+          "description": "Temporal trend classification."
+        },
+        "current_deposit_count": {
+          "type": "integer",
+          "description": "Deposits within the short window."
+        },
+        "recent_deposit_count": {
+          "type": "integer",
+          "description": "Deposits within the medium window."
+        },
+        "short_window_seconds": {
+          "type": "integer",
+          "description": "Short window duration in seconds."
+        },
+        "medium_window_seconds": {
+          "type": "integer",
+          "description": "Medium window duration in seconds."
+        },
+        "newest_signal_created_at_unix": {
+          "type": "integer",
+          "description": "Timestamp of the most recent deposit."
+        },
+        "oldest_signal_created_at_unix": {
+          "type": "integer",
+          "description": "Timestamp of the oldest active deposit."
+        }
+      },
+      "required": ["state"]
+    },
+    "signal_summary": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "zone": { "type": "string" },
+        "kind": { "type": "string" },
+        "actor_id": { "type": "string" },
+        "created_at_unix": { "type": "integer" },
+        "expires_at_unix": { "type": "integer" },
+        "strength_milli": { "type": "integer" },
+        "source": { "type": "string" },
+        "reason": { "type": "string" }
+      },
+      "required": ["id", "zone", "kind", "actor_id"]
+    }
+  }
+}

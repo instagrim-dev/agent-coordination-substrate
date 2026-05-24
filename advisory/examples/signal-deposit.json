@@ -1,0 +1,20 @@
+{
+  "id": "sig-example-001",
+  "zone": "backend/auth",
+  "kind": "quality_concern",
+  "actor_id": "agent-coder-session-7a3f",
+  "actor_kind": "agent",
+  "created_at_unix": 1716000000,
+  "expires_at_unix": 1716003600,
+  "strength_milli": 800,
+  "properties": {
+    "severity": "medium",
+    "category": "security",
+    "file_path": "internal/auth/handler.go",
+    "observation": "No rate limiting on login endpoint"
+  },
+  "source": "agent_tool",
+  "reason": "Auth handler has no rate limiting — potential brute-force vector",
+  "session_id": "sess-7a3f2b",
+  "workflow_id": "wf-daily-review"
+}
